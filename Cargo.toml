@@ -1,0 +1,9 @@
+[package]
+name = "libabsinthium"
+version = "0.1.0"
+edition = "2024"
+authors = ["Riven Skaye <riven@tae.moe>"]
+license = "MPL-2.0"
+description = "WIP library for parsing, merging, and mangling playlist files"
+
+[dependencies]
