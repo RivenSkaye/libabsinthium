@@ -37,15 +37,21 @@ pub trait PlalistFormat<
     E: Entry<M> + Default,
 >
 {
-    fn new(uri: impl Into<PathBuf>) -> Self;
+    /// Read a file or URI into a playlist
+    fn from_uri(uri: impl Into<PathBuf>) -> Self;
+    /// Parse a singular playlist entry
     fn parse_entry<S: AsRef<str>>(text: impl Into<S>) -> E;
+    /// Parse the metadata part of a playlist entry
     fn parse_entry_metadata<S: AsRef<str>>(text: impl Into<S>) -> M;
+    /// Parse metadata about the playlist itself
     fn parse_playlist_info<S: AsRef<str>>(text: impl Into<S>) -> P;
 }
 
 #[derive(Debug, Default)]
 pub struct Playlist<P: PlaylistInfo + Default, T: EntryMetadata + Default, E: Entry<T> + Default> {
+    /// Playlist entries, kept in an [`UnsafeCell`] for interior mutability purposes
     entries: UnsafeCell<Vec<E>>,
+    /// Playlist info, kept jn an [`UnsafeCell`] for mutability purposes
     info: UnsafeCell<P>,
     phantom: PhantomData<T>,
 }
