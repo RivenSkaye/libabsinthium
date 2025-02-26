@@ -1,4 +1,4 @@
-use std::{borrow::Cow, marker::PhantomData};
+use std::{borrow::Cow, marker::PhantomData, path::PathBuf};
 
 /// A trait to describe pretty bare metadata, inspired by extended m3u, which is the most common format.
 pub trait TrackMetadata {
@@ -13,7 +13,7 @@ pub trait TrackMetadata {
 /// Bare track information for a playlist.
 ///
 /// If not explicitly available, this info can always be inferred.
-pub trait Track<T: TrackMetadata> {
+pub trait Track<T: TrackMetadata + Default> {
     /// Get the number of the track. Or its position in the playlist, if not specified
     fn track_num(&self) -> u32;
     /// Get the filename or URI this track points to
@@ -32,7 +32,8 @@ pub trait PlaylistInfo {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct Playlist<P: PlaylistInfo, _T: TrackMetadata, E: Track<_T>> {
+pub struct Playlist<P: PlaylistInfo + Default, _T: TrackMetadata + Default, E: Track<_T> + Default>
+{
     entries: Vec<E>,
     info: P,
     phantom: PhantomData<_T>,
@@ -41,7 +42,9 @@ pub struct Playlist<P: PlaylistInfo, _T: TrackMetadata, E: Track<_T>> {
 impl<P: PlaylistInfo + Default, T: TrackMetadata + Default, E: Track<T> + Default>
     Playlist<P, T, E>
 {
-    pub fn new(info: P, entries: Vec<E>) -> Self {
+    pub fn new(uri: Into<PathBuf>) -> Self {}
+
+    pub fn from_parts(info: P, entries: Vec<E>) -> Self {
         Self {
             entries,
             info,
