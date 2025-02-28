@@ -50,22 +50,22 @@ pub trait PlalistFormat<
 #[derive(Default)]
 pub struct Playlist<
     P: PlaylistInfo + Default + Clone,
-    T: EntryMetadata + Default + Clone,
-    E: Entry<T> + Default + Clone,
+    M: EntryMetadata + Default + Clone,
+    E: Entry<M> + Default + Clone,
 > {
     /// Playlist entries, kept in an [`UnsafeCell`] for interior mutability purposes
     entries: RefCell<Vec<E>>,
     /// Playlist info, kept jn an [`UnsafeCell`] for mutability purposes
     info: RefCell<P>,
     #[doc(hidden)]
-    phantom: PhantomData<T>,
+    phantom: PhantomData<M>,
 }
 
 impl<
         P: PlaylistInfo + Default + Clone,
-        T: EntryMetadata + Default + Clone,
-        E: Entry<T> + Default + Clone,
-    > Playlist<P, T, E>
+        M: EntryMetadata + Default + Clone,
+        E: Entry<M> + Default + Clone,
+    > Playlist<P, M, E>
 {
     /// Creates a playlist from a block of metadata and a Vec of entries
     pub fn from_parts(info: P, entries: Vec<E>) -> Self {
