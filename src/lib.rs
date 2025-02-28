@@ -13,7 +13,7 @@ pub trait EntryMetadata {
 /// Bare entry information for a playlist.
 ///
 /// If not explicitly available, this info can always be inferred.
-pub trait Entry<M: EntryMetadata + Default + Clone> {
+pub trait Entry<M: EntryMetadata> {
     /// Get the number of the entry. Or its position in the playlist, if not specified
     fn entry_num(&self) -> u32;
     /// Get the filename or URI this entry points to
@@ -31,12 +31,7 @@ pub trait PlaylistInfo {
     fn filename(&self) -> Cow<str>;
 }
 
-pub trait PlalistFormat<
-    P: PlaylistInfo + Default + Clone,
-    M: EntryMetadata + Default + Clone,
-    E: Entry<M> + Default + Clone,
->
-{
+pub trait PlalistFormat<P: PlaylistInfo, M: EntryMetadata, E: Entry<M>> {
     /// Read a file or URI into a playlist
     fn from_uri(uri: impl Into<PathBuf>) -> Self;
     /// Parse a singular playlist entry
@@ -47,26 +42,16 @@ pub trait PlalistFormat<
     fn parse_playlist_info<S: AsRef<str>>(text: impl Into<S>) -> P;
 }
 
-#[derive(Default)]
-pub struct Playlist<
-    P: PlaylistInfo + Default + Clone,
-    M: EntryMetadata + Default + Clone,
-    E: Entry<M> + Default + Clone,
-> {
-    /// Playlist entries, kept in an [`UnsafeCell`] for interior mutability purposes
+pub struct Playlist<P: PlaylistInfo, M: EntryMetadata, E: Entry<M>> {
+    /// Playlist entries, kept in an [`RefCell`] for interior mutability purposes
     entries: RefCell<Vec<E>>,
-    /// Playlist info, kept jn an [`UnsafeCell`] for mutability purposes
+    /// Playlist info, kept in an [`RefCell`] for mutability purposes
     info: RefCell<P>,
     #[doc(hidden)]
     phantom: PhantomData<M>,
 }
 
-impl<
-        P: PlaylistInfo + Default + Clone,
-        M: EntryMetadata + Default + Clone,
-        E: Entry<M> + Default + Clone,
-    > Playlist<P, M, E>
-{
+impl<P: PlaylistInfo + Clone, M: EntryMetadata + Clone, E: Entry<M> + Clone> Playlist<P, M, E> {
     /// Creates a playlist from a block of metadata and a Vec of entries
     pub fn from_parts(info: P, entries: Vec<E>) -> Self {
         Self {
