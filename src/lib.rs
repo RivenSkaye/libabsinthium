@@ -1,16 +1,21 @@
-use std::{borrow::Cow, cell::RefCell, marker::PhantomData, path::PathBuf};
+use std::{borrow::Cow, cell::RefCell, marker::PhantomData, ops::Deref, path::PathBuf};
 
-/// A trait to describe pretty bare metadata, inspired by extended m3u, which is the most common format.
-pub trait EntryMetadata {
-    /// Produce the title
-    fn title(&self) -> Cow<str>;
+/// A trait to describe the barest metadata reasonably present on a playlist entry.
+///
+/// The minimalism is inspired by extended m3u, the most common format in the wild.
+pub trait EntryMetadata: PartialEq {
+    /// If present, return the title or name set for the playlist entry.
+    ///
+    /// A sensible fallback implementation may also return the base filename if a title or
+    /// name field isn't present on the playlist entry itself.
+    fn title(&self) -> impl Deref<Target = str>;
     /// Produce the entry length, if present
-    fn length(&self) -> Option<u32>;
-    /// Produce all info, formatted
-    fn info(&self) -> Cow<str>;
+    fn len(&self) -> Option<u32>;
+    /// Produce all known info for this playlist entry, formatted as text.
+    fn info(&self) -> impl Deref<Target = str>;
 }
 
-/// Bare entry information for a playlist.
+/// Basic entry information for a playlist.
 ///
 /// If not explicitly available, this info can always be inferred.
 pub trait Entry<M: EntryMetadata> {
@@ -31,15 +36,41 @@ pub trait PlaylistInfo {
     fn filename(&self) -> Cow<str>;
 }
 
-pub trait PlalistFormat<P: PlaylistInfo, M: EntryMetadata, E: Entry<M>> {
-    /// Read a file or URI into a playlist
+pub trait PlaylistFormat<P: PlaylistInfo, M: EntryMetadata, E: Entry<M>> {
+    /// Read a file or URI into a playlist.
     fn from_uri(uri: impl Into<PathBuf>) -> Self;
-    /// Parse a singular playlist entry
+    /// Parse a singular playlist entry.
     fn parse_entry<S: AsRef<str>>(text: impl Into<S>) -> E;
-    /// Parse the metadata part of a playlist entry
+    /// Parse the metadata part of a playlist entry.
     fn parse_entry_metadata<S: AsRef<str>>(text: impl Into<S>) -> M;
-    /// Parse metadata about the playlist itself
+    /// Parse metadata about the playlist itself.
     fn parse_playlist_info<S: AsRef<str>>(text: impl Into<S>) -> P;
+    /// Deduplicate the entries in the playlist.
+    ///
+    /// This should match and deduplicate based on whatever equality is defined
+    /// for the specified [`Entry`]. Should return the amount of entries that
+    /// were removed from the playlist.
+    fn dedup_entries(&self) -> usize;
+    /// Change the path on the playlist file.
+    fn rename(&self, new_name: impl Deref<Target = str>);
+    /// Save the playlist.
+    fn save(&self, path: impl Deref<Target = str>);
+    /// Save the playlist to a specified path.
+    fn save_to(&self, path: impl Deref<Target = str>);
+    /// Create a playlist from its constituent parts.
+    fn from_parts(info: P, entries: Vec<E>) -> Self;
+    /// Get the metadata object for a playlist.
+    fn get_metadata(&self) -> P;
+    /// Add an entry to the end of the playlist.
+    fn add_entry(&self, entry: E);
+    /// Add an entry to a specific point in the playlist.
+    fn add_entry_at(&self, entry: E, index: usize);
+    /// Remove an entry from the playlist at a specific index.
+    fn remove_entry(&self, entry: usize) -> E;
+    /// Return a count of the amount of elements in the playlist.
+    fn count(&self) -> usize;
+    ///
+    fn merge(&self, other: Self) -> Self;
 }
 
 pub struct Playlist<P: PlaylistInfo, M: EntryMetadata, E: Entry<M>> {
@@ -51,25 +82,42 @@ pub struct Playlist<P: PlaylistInfo, M: EntryMetadata, E: Entry<M>> {
     phantom: PhantomData<M>,
 }
 
-impl<P: PlaylistInfo + Clone, M: EntryMetadata + Clone, E: Entry<M> + Clone> Playlist<P, M, E> {
+impl<P: PlaylistInfo + Clone, M: EntryMetadata + Clone, E: Entry<M> + Clone>
+    Playlist<P, M, E>
+{
     /// Creates a playlist from a block of metadata and a Vec of entries
     pub fn from_parts(info: P, entries: Vec<E>) -> Self {
-        Self {
-            entries: RefCell::new(entries),
-            info: RefCell::new(info),
-            phantom: PhantomData,
-        }
-    }
-
-    pub fn add_entry(&self, entry: E) {
-        self.entries.borrow_mut().push(entry);
+        Self { entries: RefCell::new(entries), info: RefCell::new(info), phantom: PhantomData }
     }
 
     pub fn get_metadata(&self) -> P {
         self.info.borrow().clone()
     }
 
+    pub fn add_entry(&self, entry: E) {
+        self.entries.borrow_mut().push(entry)
+    }
+
+    pub fn remove_entry(&self, entry: usize) -> E {
+        self.entries.borrow_mut().remove(entry)
+    }
+
     pub fn count(&self) -> usize {
         self.entries.borrow().len()
+    }
+
+    pub fn merge(&self, other: Self) -> Self {
+        let new_list = self
+            .entries
+            .borrow()
+            .iter()
+            .chain(other.entries.borrow().iter())
+            .cloned()
+            .collect();
+        Self {
+            entries: RefCell::new(new_list),
+            info: RefCell::clone(&self.info),
+            phantom: self.phantom,
+        }
     }
 }
