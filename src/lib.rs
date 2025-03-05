@@ -1,3 +1,14 @@
+//! # Absinthium (lib)
+//!
+//! A library for managing and mangling playlist files. It's still very much early days,
+//! but the basic building blocks exist.
+//!
+//! This library exports a few traits from the top-level, and has several modules for
+//! further format specifications. The idea here is that it should be possible for anyone,
+//! anywhere to produce different playlist format handlers that should mostly be
+//! plug-and-play. Write up the `impl`, slap it onto the [`Playlist`] struct, add whatever
+//! specialized methods you like, and profit.
+
 use std::{borrow::Cow, cell::RefCell, marker::PhantomData, ops::Deref, path::PathBuf};
 
 /// A trait to describe the barest metadata reasonably present on a playlist entry.
@@ -29,10 +40,14 @@ pub trait Entry<M: EntryMetadata> {
     fn write_metadata(&mut self, metadata: M);
 }
 
+/// A trait to describe basic metadata on the playlist itself.
 pub trait PlaylistInfo {
-    /// If the playlist metadata defines a title or name for the playlist, produce it.
-    fn title(&self) -> Option<Cow<str>>;
-    /// Provide the filename or URI this playlist is found
+    /// If the playlist metadata defines a title or name for the playlist, return it.
+    ///
+    /// A sensible default to prevent [`None`] returns could very well be to return
+    /// the base filename.
+    fn title(&self) -> Option<impl Deref<Target = str>>;
+    /// Provide the filename or URI this playlist is found. Can be relative or absolute.
     fn filename(&self) -> Cow<str>;
 }
 
