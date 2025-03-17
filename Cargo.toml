@@ -7,3 +7,4 @@ license = "MPL-2.0"
 description = "WIP library for parsing, merging, and mangling playlist files"
 
 [dependencies]
+uriparse = "0.6.4"
