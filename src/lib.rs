@@ -9,7 +9,15 @@
 //! plug-and-play. Write up the `impl`, slap it onto the [`Playlist`] struct, add whatever
 //! specialized methods you like, and profit.
 
-use std::{borrow::Cow, cell::RefCell, marker::PhantomData, ops::Deref, path::PathBuf};
+use std::{borrow::Cow, cell::RefCell, marker::PhantomData, ops::Deref};
+use uriparse::uri;
+
+pub mod m3u;
+pub mod plaintext;
+
+pub fn uri_is_file(uri: impl Deref<Target = str>) -> bool {
+    false
+}
 
 /// A trait to describe the barest metadata reasonably present on a playlist entry.
 ///
@@ -19,11 +27,11 @@ pub trait EntryMetadata: PartialEq {
     ///
     /// A sensible fallback implementation may also return the base filename if a title or
     /// name field isn't present on the playlist entry itself.
-    fn title(&self) -> impl Deref<Target = str>;
+    fn title(&self) -> impl Deref<Target = str> + PartialEq;
     /// Produce the entry length, if present
     fn len(&self) -> Option<u32>;
     /// Produce all known info for this playlist entry, formatted as text.
-    fn info(&self) -> impl Deref<Target = str>;
+    fn info(&self) -> impl Deref<Target = str> + PartialEq;
 }
 
 /// Basic entry information for a playlist.
@@ -35,9 +43,9 @@ pub trait Entry<M: EntryMetadata> {
     /// Get the filename or URI this entry points to
     fn filename(&self) -> Cow<str>;
     /// If present, get the metadata object
-    fn metadata(&self) -> &M;
+    fn metadata(&self) -> Option<M>;
     /// Overwrite the metadata object
-    fn write_metadata(&mut self, metadata: M);
+    fn write_metadata(&self, metadata: M);
 }
 
 /// A trait to describe basic metadata on the playlist itself.
@@ -52,8 +60,10 @@ pub trait PlaylistInfo {
 }
 
 pub trait PlaylistFormat<P: PlaylistInfo, M: EntryMetadata, E: Entry<M>> {
-    /// Read a file or URI into a playlist.
-    fn from_uri(uri: impl Into<PathBuf>) -> Self;
+    /// Read the resource from the given URI into a playlist.
+    fn from_uri(uri: impl Deref<Target = str>) -> Self;
+    /// Read the file from the given path into a playlist.
+    fn from_path(path: impl Deref<Target = str>) -> Self;
     /// Parse a singular playlist entry.
     fn parse_entry<S: AsRef<str>>(text: impl Into<S>) -> E;
     /// Parse the metadata part of a playlist entry.
